@@ -1,0 +1,129 @@
+#!/bin/bash
+
+# Function to display usage information and available options
+function display_usage {
+    echo "Usage: $0 [OPTIONS]"
+    echo "Options:"
+    echo "  -c, --create          Create a new user account."
+    echo "  -d, --delete          Delete an existing user account."
+    echo "  -r, --reset           Reset user password for an existing account."
+    echo "  -g, --create-group    Create a new group."
+    echo "  -x, --delete-group    Delete an existing group."
+    echo "  -a, --add-to-group    Add a user to the group."
+    echo "  -b, --backup          Backup a specified directory."
+    echo "  -h, --help            Display this help and exit."
+}
+
+# Function to create a new user account
+function create_user {
+    read -p "Enter a new username: " username
+
+    # Check if the username already exists
+    if id "$username" &>/dev/null; then
+        echo "Error: The username '$username' already exists. Please choose a different username."
+    else
+        # Prompt for password
+        read -sp "Enter the password for $username: " password
+        echo
+
+        # Create the user account
+        useradd -m -p "$password" "$username"
+        echo "User account '$username' created successfully."
+    fi
+}
+
+# Function to delete an existing user account
+function delete_user {
+    read -p "Enter the username to delete: " username
+
+    # Check if the username exists
+    if id "$username" &>/dev/null; then
+        userdel -r "$username"
+        echo "User account '$username' deleted successfully."
+    else
+        echo "User account '$username' does not exist. Please enter a valid username."
+    fi
+}
+
+# Function to reset user password
+function reset_password {
+    read -p "Enter the username to reset password: " username
+
+    # Check if the username exists
+    if id "$username" &>/dev/null; then
+        read -sp "Enter the new password for $username: " password
+        echo
+
+        echo "$username:$password" | chpasswd
+        echo "Password for user '$username' reset successfully."
+    else
+        echo "Error: The username '$username' does not exist. Please enter a valid username."
+    fi
+}
+
+# Function to create a new group
+function create_group {
+    read -p "Enter the new group name: " groupname
+    groupadd "$groupname"
+    echo "Group '$groupname' created successfully"
+}
+
+# Function to delete an existing group
+function delete_group {
+    read -p "Enter the group name to delete: " groupname
+
+    # Check if groupname exists
+    if getent group "$groupname" &>/dev/null; then
+        groupdel "$groupname"
+        echo "Group '$groupname' deleted successfully."
+    else
+        echo "Error: Groupname '$groupname' does not exist. Please enter a valid group name"
+    fi
+}
+
+# Function to add user to the group
+function add_user_to_group {
+    read -p "Enter the username: " username
+    read -p "Enter the groupname: " groupname
+    usermod -aG "$groupname" "$username"
+    echo "User '$username' added to group '$groupname' successfully."
+}
+
+# Function to backup a specified directory
+function backup_directory {
+    read -p "Enter the directory path to backup: " directory
+
+    # Check if the directory exists
+    if [ -d "$directory" ]; then
+        # Archive and compress the directory
+        timestamp=$(date +"%Y%m%d_%H%M%S")
+        backup_file="backup_$timestamp.tar.gz"
+        tar -czvf "$backup_file" "$directory"
+        echo "Backup of '$directory' created successfully: $backup_file"
+    else
+        echo "Error: Directory '$directory' does not exist."
+    fi
+}
+
+# Check if no arguments are provided or the -h or --help option is provided
+if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    display_usage
+    exit 0
+fi
+
+# Command-line argument parsing
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -c|--create) create_user ;;
+        -d|--delete) delete_user ;;
+        -r|--reset) reset_password ;;
+        -g|--create-group) create_group ;;
+        -x|--delete-group) delete_group ;;
+        -a|--add-to-group) add_user_to_group ;;
+        -b|--backup) backup_directory ;;
+        -h|--help) display_usage ;;
+        *) echo "Error: Invalid option '$1'. Use '--help' to see available options." ;;
+    esac
+    shift
+done
+
